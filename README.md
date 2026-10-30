@@ -18,6 +18,7 @@ desktop, without clicking through the installer.
 11. [Security notes](#11-security-notes)
 12. [Lessons learned](#12-lessons-learned)
 13. [Language note](#13-language-note)
+14. [License](#14-license)
 
 ---
 
@@ -462,3 +463,8 @@ The AutoLogon password value is never written to a log - only whether it exists.
 
 Messages, code comments, logs and the report are in Serbian (Latin script, ASCII only); this README is in English.
 This project was built with AI assistance (Claude).
+
+## 14. License
+
+[MIT](LICENSE). The project is provided "as is", without warranty of any kind. It erases disks: read
+[section 2](#2-warning) and test it on a computer you can afford to wipe before you use it on real ones.
