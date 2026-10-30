@@ -1,0 +1,19 @@
+# Installeri i arhive - nikad u repo
+*.exe
+*.msi
+*.zip
+
+# Logovi i izvestaji (Setup pravi Logs\ u korenu flesa i Provisioning_Izvestaj_*.txt na desktopu)
+*.log
+Logs/
+Report*.txt
+*Izvestaj*.txt
+state*.json
+
+# Sadrzaj koji se stavlja na fles rucno (tudj softver) - u repou je samo README.txt
+usb/Setup/Apps/*
+!usb/Setup/Apps/README.txt
+usb/Setup/Drivers/Network/*
+!usb/Setup/Drivers/Network/README.txt
+usb/Rucno/*
+!usb/Rucno/README.txt

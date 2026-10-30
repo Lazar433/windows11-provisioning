@@ -1,0 +1,17 @@
+# Podrazumevano: git sam odlucuje da li je fajl tekst ili binarni; u repou cuva LF
+* text=auto
+
+# Windows skripte i XML: na disku uvek CRLF, bez obzira na podesavanje racunara
+# (cmd.exe sa LF zavrsecima ume da pogresi skokove na labele u .bat fajlovima)
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+*.psm1 text eol=crlf
+*.psd1 text eol=crlf
+*.xml  text eol=crlf
+
+# Binarni fajlovi - git ih ne menja i ne prikazuje diff
+*.exe binary
+*.msi binary
+*.zip binary
+*.cab binary

@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- WINPROV-AUTOUNATTEND -->
+<!--
+  autounattend.xml - Windows 11 Pro bez klikova, od butovanja do desktopa (Setup\Start.bat posle prvog logovanja).
+  Ide u KOREN instalacionog flesa (pored setup.exe i sources\). Oznaka gore koristi Check-Disk.cmd (petlja).
+
+  PAZNJA: ovaj fles BRISE Disk 0 (pita samo kad ima vise unutrasnjih diskova). Ne ostavljaj ga u racunaru
+  koji ne treba da se reinstalira.
+  Nalog admin, podrazumevana lozinka "admin" (dva <Value> polja: LocalAccount i AutoLogon - moraju biti ista).
+  Lozinka je JAVNA: Setup.ps1 na kraju podesava da Windows trazi novu lozinku pri sledecem logovanju.
+  Lozinka se kuca na US tastaturi (tastatura u OOBE-u je US).
+-->
+<unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <!-- ===== windowsPE: jezik instalacije, provera diska, brisanje i particije, izdanje ===== -->
+  <settings pass="windowsPE">
+    <component name="Microsoft-Windows-International-Core-WinPE" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <SetupUILanguage>
+        <UILanguage>en-US</UILanguage>
+      </SetupUILanguage>
+      <InputLocale>0409:00000409</InputLocale>
+      <SystemLocale>en-US</SystemLocale>
+      <UILanguage>en-US</UILanguage>
+      <UserLocale>en-US</UserLocale>
+    </component>
+
+    <component name="Microsoft-Windows-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <!-- Pre brisanja: Check-Disk.cmd (trazi se na svim slovima) proverava da je Disk 0 unutrasnji disk
+           (vise unutrasnjih diskova = prikaz svih i potvrda DA) i da ovo nije ponovni but sa flesa. Ako provera ne prodje ili skripta nije nadjena - gasenje (wpeutil),
+           a ako gasenje ne uspe - beskonacna petlja: komanda se NIKAD ne zavrsi, pa Setup ne stize do brisanja
+           (Setup posle RunSynchronous nastavlja i kad komanda vrati gresku - exit kod nije zastita).
+           WillReboot=Never: exit kod komande ne sme da izazove restart Setup-a.
+           Komande: SAMO ugradjene cmd komande + find.exe, diskpart.exe, wpeutil.exe - boot.wim sa MCT flesa nema
+           findstr, timeout, choice (test B, pokusaj 1). Beskonacna petlja: "for /L (0,0,1) do cd ." (ugradjeno, tiho). -->
+      <RunSynchronous>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <Path>cmd.exe /c for %d in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do @if exist %d:\Setup\Unattend\Check-Disk.cmd call %d:\Setup\Unattend\Check-Disk.cmd %d:</Path>
+          <Description>Provera diska pre brisanja</Description>
+          <WillReboot>Never</WillReboot>
+        </RunSynchronousCommand>
+        <RunSynchronousCommand wcm:action="add">
+          <Order>2</Order>
+          <Path>cmd.exe /c if not exist X:\Windows\Temp\disk-ok.txt (echo STOP: provera diska nije potvrdjena - instalacija ZAUSTAVLJENA, nista nije obrisano. Iskljuci racunar. &amp; wpeutil shutdown &amp; for /L %i in (0,0,1) do @cd .)</Path>
+          <Description>Bez potvrde provere diska - gasenje ili beskonacno cekanje, nista se ne brise</Description>
+          <WillReboot>Never</WillReboot>
+        </RunSynchronousCommand>
+      </RunSynchronous>
+
+      <!-- Disk 0: brisanje i GPT particije (UEFI): EFI 260 MB (radi i na 4K diskovima), MSR 16 MB, Windows ostatak.
+           Bez posebne Recovery particije - Windows tada drzi WinRE u C:\Recovery (jednostavnije, radi isto). -->
+      <DiskConfiguration>
+        <WillShowUI>OnError</WillShowUI>
+        <Disk wcm:action="add">
+          <DiskID>0</DiskID>
+          <WillWipeDisk>true</WillWipeDisk>
+          <CreatePartitions>
+            <CreatePartition wcm:action="add">
+              <Order>1</Order>
+              <Type>EFI</Type>
+              <Size>260</Size>
+            </CreatePartition>
+            <CreatePartition wcm:action="add">
+              <Order>2</Order>
+              <Type>MSR</Type>
+              <Size>16</Size>
+            </CreatePartition>
+            <CreatePartition wcm:action="add">
+              <Order>3</Order>
+              <Type>Primary</Type>
+              <Extend>true</Extend>
+            </CreatePartition>
+          </CreatePartitions>
+          <ModifyPartitions>
+            <ModifyPartition wcm:action="add">
+              <Order>1</Order>
+              <PartitionID>1</PartitionID>
+              <Format>FAT32</Format>
+              <Label>System</Label>
+            </ModifyPartition>
+            <ModifyPartition wcm:action="add">
+              <Order>2</Order>
+              <PartitionID>2</PartitionID>
+            </ModifyPartition>
+            <ModifyPartition wcm:action="add">
+              <Order>3</Order>
+              <PartitionID>3</PartitionID>
+              <Format>NTFS</Format>
+              <Letter>C</Letter>
+              <Label>Windows</Label>
+            </ModifyPartition>
+          </ModifyPartitions>
+        </Disk>
+      </DiskConfiguration>
+
+      <ImageInstall>
+        <OSImage>
+          <InstallTo>
+            <DiskID>0</DiskID>
+            <PartitionID>3</PartitionID>
+          </InstallTo>
+          <WillShowUI>OnError</WillShowUI>
+        </OSImage>
+      </ImageInstall>
+
+      <!-- Javni genericki kljuc za INSTALACIJU Windows 11 Pro (Microsoft): samo bira izdanje, NE aktivira.
+           Ima prednost nad Home kljucem iz BIOS-a. Aktivacija: izvestaj (sekcija 7) upozorava na Home u BIOS-u. -->
+      <UserData>
+        <AcceptEula>true</AcceptEula>
+        <ProductKey>
+          <Key>VK7JG-NPHTM-C97JM-9MPGT-3V66T</Key>
+          <WillShowUI>OnError</WillShowUI>
+        </ProductKey>
+      </UserData>
+    </component>
+  </settings>
+
+  <!-- ===== specialize: ime racunara, vremenska zona (bez nje Windows ostaje na Pacific - test B) ===== -->
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <ComputerName>pc1</ComputerName>
+      <TimeZone>Central Europe Standard Time</TimeZone>
+    </component>
+  </settings>
+
+  <!-- ===== oobeSystem: bez OOBE pitanja, lokalni nalog admin, 1 automatsko logovanje, Start.bat ===== -->
+  <settings pass="oobeSystem">
+    <!-- Region od pocetka (odluka 2026-10-26): UI en-US, format sr-Latn-RS, tastature US (prva = podrazumevana)
+         + srpska latinica + srpska cirilica. SystemLocale (non-Unicode) ostaje en-US - ne diramo ga.
+         Sekcija 2 (Region) i dalje proverava i kopira na Welcome screen i nove korisnike. -->
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <InputLocale>0409:00000409;241A:0000081A;281A:00000C1A</InputLocale>
+      <SystemLocale>en-US</SystemLocale>
+      <UILanguage>en-US</UILanguage>
+      <UserLocale>sr-Latn-RS</UserLocale>
+    </component>
+
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <HideLocalAccountScreen>true</HideLocalAccountScreen>
+        <!-- 3 = bez preporucenih podesavanja privatnosti (najmanje podataka Microsoft-u) -->
+        <ProtectYourPC>3</ProtectYourPC>
+      </OOBE>
+
+      <!-- Obican lokalni nalog u grupi Administrators (NE ugradjeni Administrator, on ostaje iskljucen) -->
+      <UserAccounts>
+        <LocalAccounts>
+          <LocalAccount wcm:action="add">
+            <Name>admin</Name>
+            <DisplayName>admin</DisplayName>
+            <Group>Administrators</Group>
+            <Password>
+              <Value>admin</Value>
+              <PlainText>true</PlainText>
+            </Password>
+          </LocalAccount>
+        </LocalAccounts>
+      </UserAccounts>
+
+      <!-- Jedno automatsko logovanje - Setup.ps1 na pocetku brise lozinku iz registry-ja i proverava na kraju -->
+      <AutoLogon>
+        <Enabled>true</Enabled>
+        <LogonCount>1</LogonCount>
+        <Username>admin</Username>
+        <Password>
+          <Value>admin</Value>
+          <PlainText>true</PlainText>
+        </Password>
+      </AutoLogon>
+
+      <!-- Posle prvog logovanja: Start.bat se trazi po fajlu na svim diskovima (slovo flesa nije uvek isto).
+           "start" = poseban prozor, prvo logovanje se ne blokira; pause u Start.bat samo drzi prozor sa rezultatom. -->
+      <FirstLogonCommands>
+        <SynchronousCommand wcm:action="add">
+          <Order>1</Order>
+          <CommandLine>cmd.exe /c for %d in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do @if exist %d:\Setup\Start.bat start "Provisioning" %d:\Setup\Start.bat</CommandLine>
+          <Description>Provisioning: Setup\Start.bat sa flesa</Description>
+        </SynchronousCommand>
+      </FirstLogonCommands>
+    </component>
+  </settings>
+</unattend>
